@@ -28,6 +28,7 @@ import android.app.Person;
 import android.app.WallpaperManager;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
+import android.content.Intent;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.LauncherActivityInfo;
@@ -142,8 +143,6 @@ public final class Utilities {
      * Set on a motion event dispatched from the nav bar. See {@link MotionEvent#setEdgeFlags(int)}.
      */
     public static final int EDGE_NAV_BAR = 1 << 8;
-
-    private static final long WAIT_BEFORE_RESTART = 250;
 
     public static final String KEY_DT_GESTURE = "pref_dt_gesture";
 
@@ -720,26 +719,12 @@ public final class Utilities {
     }
 
     public static void restart(final Context context) {
-        ProgressDialog.show(context, null, context.getString(R.string.state_loading), true, false);
-        new LooperExecutor(LauncherModel.getWorkerLooper()).execute(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    Thread.sleep(WAIT_BEFORE_RESTART);
-                } catch (Exception e) {
-                }
-
-                Intent intent = new Intent(Intent.ACTION_MAIN)
-                        .addCategory(Intent.CATEGORY_HOME)
-                        .setPackage(context.getPackageName())
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-
-                PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_ONE_SHOT);
-                AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-                alarmManager.setExact(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + 50, pendingIntent);
-
-                android.os.Process.killProcess(android.os.Process.myPid());
+        MODEL_EXECUTOR.execute(() -> {
+            try {
+                Thread.sleep(WAIT_BEFORE_RESTART);
+            } catch (Exception ignored) {
             }
+            android.os.Process.killProcess(android.os.Process.myPid());
         });
     }
 
